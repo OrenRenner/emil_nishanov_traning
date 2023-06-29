@@ -1,42 +1,42 @@
 version: '3.8'
 
 services:
-  web:
-    image:  git.advncd.com:5050/traning/emil_nishanov_traning/${IMAGE_BRANCH}:${TAG}
-    container_name: hecate_web
+  # web:
+  #   image:  git.advncd.com:5050/traning/emil_nishanov_traning/${IMAGE_BRANCH}:${TAG}
+  #   container_name: hecate_web
+  #   ports:
+  #     - "80:80"
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #     - CELERY_WORKER_SEND_TASK_EVENTS=True
+  #     - CELERY_TASK_SEND_SENT_EVENT=True
+  #   env_file:
+  #     - .env
+
+  redis_server:
+    image: redis
     ports:
-      - "80:80"
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_SEND_TASK_EVENTS=True
-      - CELERY_TASK_SEND_SENT_EVENT=True
-    env_file:
-      - .env
+      - "6379:6379"
 
-  redis:
-    image: redis:6-alpine
-    expose:
-      - 6379
-
-  worker:
-    image: git.advncd.com:5050/traning/emil_nishanov_traning/${IMAGE_BRANCH}:${TAG}
-    container_name: hecate_worker
-    volumes:
-      - /home/ubuntu/logs:/app/logs
-    command: ['celery', '--app=worker.celery_worker', 'worker', '-l', 'info']
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_SEND_TASK_EVENTS=True
-      - CELERY_TASK_SEND_SENT_EVENT=True
-    depends_on:
-      - redis
-      - web
-    expose:
-      - 6379
-    env_file:
-      - .env
+  # worker:
+  #   image: git.advncd.com:5050/traning/emil_nishanov_traning/${IMAGE_BRANCH}:${TAG}
+  #   container_name: hecate_worker
+  #   volumes:
+  #     - /home/ubuntu/logs:/app/logs
+  #   command: ['celery', '--app=worker.celery_worker', 'worker', '-l', 'info']
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #     - CELERY_WORKER_SEND_TASK_EVENTS=True
+  #     - CELERY_TASK_SEND_SENT_EVENT=True
+  #   depends_on:
+  #     - redis
+  #     - web
+  #   expose:
+  #     - 6379
+  #   env_file:
+  #     - .env
