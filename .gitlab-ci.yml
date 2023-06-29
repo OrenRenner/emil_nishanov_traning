@@ -1,0 +1,127 @@
+stages:
+    - test
+    - build
+    - deploy
+    - rollback
+
+
+run_test:
+  stage: test
+  image: python:3.10-slim
+  only:
+    - master
+    - dev
+  before_script:
+    - pip install -r requirements.txt
+  script:
+    - python -m pytest
+  tags:
+    - python_hecate
+
+build:
+  image: docker:20.10.16
+  stage: build
+  only:
+    - master
+    - dev
+  variables:
+    IMAGE_BRANCH: web_image_master
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - if [ $CI_PIPELINE_SOURCE != "web" ]; 
+      then
+        docker pull $CI_REGISTRY/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest;
+        docker tag $CI_REGISTRY/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest $CI_REGISTRY/traning/emil_nishanov_traning/$IMAGE_BRANCH:rollback || echo No such hecate_traefik image;
+        docker push $CI_REGISTRY/traning/emil_nishanov_traning/$IMAGE_BRANCH:rollback;
+      fi
+    - echo 'TAG=latest' > .env
+    - echo 'IMAGE_BRANCH=$IMAGE_BRANCH' >> .env
+    - if [ $CI_COMMIT_REF_NAME == "dev" ]; 
+      then 
+        IMAGE_BRANCH=web_image_dev; 
+      else 
+        IMAGE_BRANCH=web_image_master; 
+      fi
+    - docker compose build
+    - docker push $CI_REGISTRY/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest
+    - echo $CI_PIPELINE_SOURCE
+  tags:
+    - shell_hecate
+
+deploy_app:
+  image: alpine:latest
+  stage: deploy
+  only:
+    - master
+    - dev
+  variables:
+    IMAGE_BRANCH: web_image_master
+  before_script:
+    - if [ $CI_COMMIT_REF_NAME == "dev" ]; then IMAGE_BRANCH=web_image_dev; else IMAGE_BRANCH=web_image_master; fi
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SSH_IPADDRESS >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - scp docker-compose.yml $SSH_USER@$SSH_IPADDRESS:/home/ubuntu/
+    - ssh $SSH_USER@$SSH_IPADDRESS "echo 'TAG=latest' > .env"
+    - ssh $SSH_USER@$SSH_IPADDRESS "echo 'IMAGE_BRANCH=$IMAGE_BRANCH' >> .env"
+    - ssh $SSH_USER@$SSH_IPADDRESS "
+        hostname && 
+        sudo apt update && 
+        sudo apt install apt-transport-https ca-certificates curl software-properties-common && 
+        docker --version || curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && 
+        docker ps || sudo add-apt-repository 'deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable' && 
+        docker images || apt-cache policy docker-ce && 
+        docker --help || sudo apt install docker-ce -y && 
+        sudo chmod 666 /var/run/docker.sock &&
+
+        docker-compose down || echo No such container $$ 
+        docker rmi git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:rollback || echo No such hecate_traefik image &&
+        docker rmi git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest || echo No such hecate_traefik image &&
+        docker login git.advncd.com:5050 -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD && 
+        docker pull git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest &&
+        docker-compose up -d
+      "
+  tags:
+    - shell_hecate
+
+
+rollback:
+  image: alpine:latest
+  stage: rollback
+  when: manual
+  only:
+    - master
+    - dev
+  variables:
+    IMAGE_BRANCH: web_image_master
+  before_script:
+    - if [ $CI_COMMIT_REF_NAME == "dev" ]; then IMAGE_BRANCH=web_image_dev; else IMAGE_BRANCH=web_image_master; fi
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SSH_IPADDRESS >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - ssh $SSH_USER@$SSH_IPADDRESS "echo 'TAG=rollback' > .env"
+    - ssh $SSH_USER@$SSH_IPADDRESS "echo 'IMAGE_BRANCH=$IMAGE_BRANCH' >> .env"
+    - ssh $SSH_USER@$SSH_IPADDRESS "
+        hostname && 
+        docker-compose down || echo No such container $$ 
+        docker rmi git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:latest || echo No such hecate_traefik image &&
+        docker rmi git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:rollback || echo No such hecate_traefik image &&
+        docker login git.advncd.com:5050 -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD && 
+        docker pull git.advncd.com:5050/traning/emil_nishanov_traning/$IMAGE_BRANCH:rollback &&
+        docker-compose up -d
+      "
+  tags:
+    - shell_hecate
