@@ -24,8 +24,6 @@ jobs:
         scp config.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp main.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp worker.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
-        ls -lah
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && killall uvicorn && killall celery"
     - name: cleanup
       run: rm -rf ~/.ssh
 
@@ -43,6 +41,8 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd ${{ secrets.WORK_DIR }}
+          killall uvicorn || echo "no uvicorn"
+          killall celery || echo "no celery"
           source venv/bin/activate
           nohup uvicorn main:app --host 0.0.0.0 --port 8000&
           nohup celery --app=worker.celery_worker worker -l info&
