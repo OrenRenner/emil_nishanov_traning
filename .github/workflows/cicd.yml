@@ -44,5 +44,5 @@ jobs:
           killall uvicorn || echo "no uvicorn"
           killall celery || echo "no celery"
           source venv/bin/activate
-          nohup uvicorn main:app --host 0.0.0.0 --port 8000&
-          nohup celery --app=worker.celery_worker worker -l info&
+          nohup uvicorn main:app --host 0.0.0.0 --port 8000 & exit
+          nohup celery --app=worker.celery_worker worker -l info & exit 
