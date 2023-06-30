@@ -28,7 +28,7 @@ jobs:
         scp worker.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         ls -lah
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && killall uvicorn && killall celery"
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && nohup uvicorn main:app --host & && nohup celery -A worker worker --loglevel=info & && exit"
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host"
       # run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git pull && exit"
     - name: cleanup
       run: rm -rf ~/.ssh
