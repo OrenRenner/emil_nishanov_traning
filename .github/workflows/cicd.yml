@@ -24,7 +24,7 @@ jobs:
         scp config.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp main.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp worker.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
-        timeout 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host 0.0.0.0 --port 8000&"
+        timeout --foreground 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host 0.0.0.0 --port 8000&" || echo "no uvicorn"
     - name: cleanup
       run: rm -rf ~/.ssh
 
