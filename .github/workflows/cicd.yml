@@ -24,25 +24,26 @@ jobs:
         scp config.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp main.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp worker.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
+        timeout 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host 0.0.0.0 --port 8000&"
     - name: cleanup
       run: rm -rf ~/.ssh
 
-  deploy:
-    name: Deploying
-    needs: run_pull
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: multiple command
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          cd ${{ secrets.WORK_DIR }}
-          killall uvicorn || echo "no uvicorn"
-          killall celery || echo "no celery"
-          source venv/bin/activate
-          nohup uvicorn main:app --host 0.0.0.0 --port 8000 & exit
-          nohup celery --app=worker.celery_worker worker -l info & exit 
+  # deploy:
+  #   name: Deploying
+  #   needs: run_pull
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: multiple command
+  #     uses: appleboy/ssh-action@master
+  #     with:
+  #       host: ${{ secrets.SSH_HOST }}
+  #       username: ${{ secrets.SSH_USER }}
+  #       key: ${{ secrets.SSH_PRIVATE_KEY }}
+  #       script: |
+  #         cd ${{ secrets.WORK_DIR }}
+  #         killall uvicorn || echo "no uvicorn"
+  #         killall celery || echo "no celery"
+  #         source venv/bin/activate
+  #         nohup uvicorn main:app --host 0.0.0.0 --port 8000 & exit
+  #         nohup celery --app=worker.celery_worker worker -l info & exit 
