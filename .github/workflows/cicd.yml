@@ -24,7 +24,10 @@ jobs:
         scp config.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp main.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
         scp worker.py ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/${{ secrets.WORK_DIR }}/
-        timeout --foreground 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host 0.0.0.0 --port 8000&" || echo "no uvicorn"
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "killall uvicorn || echo 'no uvicorn'"
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "killall celery || echo 'no celery'"
+        timeout --foreground 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup uvicorn main:app --host 0.0.0.0 --port 8000" || echo "no uvicorn"
+        timeout --foreground 5 ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && source venv/bin/activate && nohup celery --app=worker.celery_worker worker -l info" || echo "no celery"
     - name: cleanup
       run: rm -rf ~/.ssh
 
